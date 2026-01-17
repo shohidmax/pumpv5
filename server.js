@@ -141,6 +141,9 @@ wss.on('connection', (ws) => {
                 ws.send(JSON.stringify({ type: 'error', message: 'Device Offline (No Socket).' }));
             }
         }
+        else if (data.type === 'ping') {
+            ws.send(JSON.stringify({ type: 'pong' }));
+        }
     });
 
     ws.on('close', () => {
