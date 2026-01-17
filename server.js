@@ -1,6 +1,7 @@
 // server.js
 // =================================================================
 // Simple & Robust WebSocket Relay Server for ESP32
+// Features: MongoDB Logging, Command Forwarding, Date Filtering
 // =================================================================
 
 const express = require('express');
@@ -63,10 +64,7 @@ wss.on('connection', (ws) => {
                 try {
                     await MotorLog.create({
                         macAddress: mac,
-                        onTime, offTime, duration,
-                        // mongoose saves dates in info on server, which is technically
-                        // just simple number. If user wants "BD Time" stored as string:
-                        // But serverTime is Date object. Front end can convert.
+                        onTime, offTime, duration
                     });
                     console.log("Log saved to DB.");
                 } catch (err) {
@@ -84,7 +82,7 @@ wss.on('connection', (ws) => {
                 if (startDate) query.serverTime.$gte = new Date(startDate);
                 if (endDate) {
                     const end = new Date(endDate);
-                    end.setHours(23, 59, 59, 999); // Include the whole end day
+                    end.setHours(23, 59, 59, 999);
                     query.serverTime.$lte = end;
                 }
             }
@@ -130,7 +128,7 @@ wss.on('connection', (ws) => {
                 } else {
                     console.warn(`[CMD] Failed: ESP32 Socket exists but State is ${esp32Socket.readyState}`);
                     ws.send(JSON.stringify({ type: 'error', message: 'Device Disconnected (Socket Closed).' }));
-                    esp32Socket = null; // Clear stale ref
+                    esp32Socket = null;
                 }
             } else {
                 console.warn("[CMD] Failed: ESP32 Socket is NULL.");
