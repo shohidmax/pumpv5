@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TODO Cloud - Pump Automation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <nav id="navbar" class="bg-white shadow-md px-6 py-3 flex justify-between items-center z-50 hidden">
+        <div class="flex items-center gap-2">
+            <div class="bg-indigo-600 p-2 rounded-lg text-white"><i data-lucide="activity" class="w-5 h-5"></i></div>
+            <div><h1 class="font-bold text-xl leading-none">TODO</h1><span id="nav-user-role" class="text-xs text-slate-500 uppercase">USER</span></div>
+        </div>
+        <div class="flex items-center gap-4">
+            <button id="btn-nav-admin" class="text-sm font-bold text-slate-500 hover:text-indigo-600 hidden" onclick="switchView('admin')">Admin</button>
+            <button id="btn-nav-dashboard" class="text-sm font-bold text-indigo-600" onclick="switchView('dashboard')">Dashboard</button>
+            <button onclick="handleLogout()" class="text-red-500 hover:bg-red-50 p-2 rounded-full"><i data-lucide="log-out" class="w-5 h-5"></i></button>
+        </div>
+    </nav>
+
+    <!-- Views -->
+    <main class="flex-grow relative">
+        <!-- LOGIN -->
+        <section id="view-login" class="min-h-screen bg-slate-900 flex items-center justify-center p-4 absolute inset-0 z-40">
+            <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
+                <h2 class="text-2xl font-bold mb-1 text-center text-slate-800">TODO Cloud</h2>
+                <p class="text-slate-500 text-center mb-6 text-sm">Server not required for Demo</p>
+                <form onsubmit="handleLogin(event)" class="space-y-4 mt-6">
+                    <input id="login-email" type="email" placeholder="Email (use 'admin' for admin role)" class="w-full p-3 border rounded-lg" required>
+                    <input id="login-password" type="password" placeholder="Password" class="w-full p-3 border rounded-lg" required>
+                    <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition">Login</button>
+                </form>
+                <div class="mt-6 text-center text-sm"><button onclick="switchView('signup')" class="text-indigo-600 font-bold hover:underline">Create Account</button></div>
+            </div>
+        </section>
+
+        <!-- SIGNUP -->
+        <section id="view-signup" class="min-h-screen bg-slate-900 flex items-center justify-center p-4 absolute inset-0 z-40 hidden">
+            <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
+                <h2 class="text-2xl font-bold mb-6 text-center text-slate-800">Sign Up</h2>
+                <form onsubmit="handleSignup(event)" class="space-y-4">
+                    <input id="signup-name" type="text" placeholder="Full Name" class="w-full p-3 border rounded-lg" required>
+                    <input id="signup-email" type="email" placeholder="Email" class="w-full p-3 border rounded-lg" required>
+                    <input id="signup-pass" type="password" placeholder="Password" class="w-full p-3 border rounded-lg" required>
+                    <button type="submit" class="w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition">Register</button>
+                </form>
+                <div class="mt-4 text-center text-sm"><button onclick="switchView('login')" class="text-slate-500 hover:text-slate-800">Back to Login</button></div>
+            </div>
+        </section>
+
+        <!-- DASHBOARD -->
+        <section id="view-dashboard" class="p-6 max-w-4xl mx-auto space-y-6 hidden">
+            <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm">
+                <div class="flex gap-2">
+                    <select id="device-select" onchange="changeDevice()" class="border p-2 rounded-lg text-sm"></select>
+                    <button onclick="openModal('add-device')" class="bg-indigo-600 text-white p-2 rounded-lg text-sm flex items-center gap-1 hover:bg-indigo-700 transition"><i data-lucide="plus-circle" class="w-4 h-4"></i> Add</button>
+                </div>
+                <div id="connection-badge" class="px-3 py-1 rounded text-xs font-bold text-white bg-red-500 transition-colors">OFFLINE</div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-xl p-8 text-center">
+                <h3 class="text-xl font-bold text-slate-700 mb-6">Motor Control</h3>
+                <div class="flex justify-center mb-8">
+                    <div id="motor-indicator" class="w-32 h-32 rounded-full border-4 border-slate-200 text-slate-300 flex flex-col items-center justify-center transition-all duration-500">
+                        <span id="motor-status-text" class="text-3xl font-bold">OFF</span>
+                    </div>
+                </div>
+                <div class="flex gap-4 max-w-md mx-auto">
+                    <button onclick="sendCommand('RELAY_1')" class="flex-1 bg-green-500 text-white font-bold py-3 rounded-lg shadow hover:bg-green-600 transition active:scale-95">Start</button>
+                    <button onclick="sendCommand('RELAY_2')" class="flex-1 bg-red-500 text-white font-bold py-3 rounded-lg shadow hover:bg-red-600 transition active:scale-95">Stop</button>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-xl p-6">
+                <div class="flex justify-between mb-4">
+                    <h3 class="font-bold text-lg">Logs</h3>
+                    <button onclick="downloadCSV()" class="bg-slate-800 text-white px-3 py-1 rounded text-sm hover:bg-slate-700 transition">CSV</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left"><thead class="bg-slate-50 uppercase text-xs"><tr><th class="px-4 py-3">Date</th><th class="px-4 py-3">Time</th><th class="px-4 py-3">Duration</th></tr></thead><tbody id="logs-body"></tbody></table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ADMIN -->
+        <section id="view-admin" class="p-6 max-w-6xl mx-auto space-y-6 hidden">
+            <h2 class="text-2xl font-bold mb-6">Admin Panel</h2>
+            <div id="admin-content" class="bg-white p-6 rounded-2xl shadow">Loading...</div>
+        </section>
+
+        <!-- ADD MODAL -->
+        <div id="modal-add-device" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50">
+            <div class="bg-white p-6 rounded-2xl w-80">
+                <h3 class="font-bold mb-4">Add Device</h3>
+                <form onsubmit="handleAddDevice(event)">
+                    <input name="mac" placeholder="MAC Address" class="w-full p-2 border rounded mb-2" required>
+                    <input name="serial" placeholder="Serial Number" class="w-full p-2 border rounded mb-4" required>
+                    <div class="flex gap-2"><button type="button" onclick="closeModal('add-device')" class="flex-1 border p-2 rounded hover:bg-slate-50">Cancel</button><button type="submit" class="flex-1 bg-indigo-600 text-white p-2 rounded hover:bg-indigo-700">Add</button></div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api';
+        const WS_URL = 'ws://localhost:3000';
+        let socket, token, user, currentMac, logs = [];
+        let mockMode = false; // Flag to indicate if we are using mock data
+        let simInterval = null; // For simulated WS updates
+
+        lucide.createIcons();
+
+        // --- API FALLBACK HANDLER ---
+        async function apiCall(endpoint, method = 'GET', body = null) {
+            const options = {
+                method,
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+            };
+            if (body) options.body = JSON.stringify(body);
+
+            try {
+                const res = await fetch(`${API_URL}${endpoint}`, options);
+                if (!res.ok) throw new Error('API Failed');
+                return await res.json();
+            } catch (e) {
+                console.warn(`Server unavailable. Using Mock Data for ${endpoint}`);
+                mockMode = true;
+                
+                // MOCK RESPONSES
+                await new Promise(r => setTimeout(r, 500)); // Fake network delay
+                
+                if (endpoint.includes('/auth/login')) {
+                    const email = body.email;
+                    return {
+                        token: 'mock-token-123',
+                        user: {
+                            _id: '1',
+                            name: 'Demo User',
+                            email: email,
+                            role: email.includes('admin') ? 'admin' : 'user',
+                            devices: ['AA:BB:CC:DD:EE:FF']
+                        }
+                    };
+                }
+                if (endpoint.includes('/auth/signup')) return { msg: 'Mock Signup Successful' };
+                if (endpoint.includes('/device/add')) return { msg: 'Device Added (Mock)' };
+                if (endpoint.includes('/admin/users')) return [
+                    { _id: '1', name: 'User One', email: 'user1@test.com', isBlocked: false },
+                    { _id: '2', name: 'User Two', email: 'user2@test.com', isBlocked: true }
+                ];
+                if (endpoint.includes('/admin/toggle-block')) return { msg: 'Status Toggled (Mock)' };
+                
+                return {};
+            }
+        }
+
+        function switchView(view) {
+            document.querySelectorAll('section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`view-${view}`).classList.remove('hidden');
+            
+            const nav = document.getElementById('navbar');
+            if(view === 'login' || view === 'signup') {
+                nav.classList.add('hidden');
+                document.body.classList.add('bg-slate-900');
+            } else {
+                nav.classList.remove('hidden');
+                document.body.classList.remove('bg-slate-900');
+                if(view === 'admin') loadAdminData();
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            const data = await apiCall('/auth/login', 'POST', { email, password });
+            
+            if(data.token) {
+                token = data.token; 
+                user = data.user;
+                document.getElementById('nav-user-role').textContent = user.role;
+                
+                const adminBtn = document.getElementById('btn-nav-admin');
+                if(user.role === 'admin') adminBtn.classList.remove('hidden');
+                else adminBtn.classList.add('hidden');
+
+                initDashboard();
+                switchView(user.role === 'admin' ? 'admin' : 'dashboard');
+            } else {
+                alert(data.msg || "Login Failed");
+            }
+        }
+
+        async function handleSignup(e) {
+            e.preventDefault();
+            const name = document.getElementById('signup-name').value;
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-pass').value;
+            
+            const data = await apiCall('/auth/signup', 'POST', { name, email, password });
+            alert(data.msg);
+            if(data.msg.includes('Successful') || data.msg.includes('registered')) switchView('login');
+        }
+
+        function initDashboard() {
+            const select = document.getElementById('device-select');
+            select.innerHTML = '';
+            
+            if(user.devices && user.devices.length > 0) {
+                user.devices.forEach(d => {
+                    const opt = document.createElement('option');
+                    opt.value = d; opt.textContent = d;
+                    select.appendChild(opt);
+                });
+                currentMac = user.devices[0];
+                connectWS();
+            } else {
+                select.innerHTML = '<option>No Devices</option>';
+            }
+        }
+
+        function changeDevice() {
+            currentMac = document.getElementById('device-select').value;
+            connectWS();
+        }
+
+        function connectWS() {
+            if(socket) socket.close();
+            if(simInterval) clearInterval(simInterval);
+
+            // If we are already in mock mode, skip real WS connection attempt
+            if (mockMode) {
+                simulateWS();
+                return;
+            }
+
+            socket = new WebSocket(WS_URL);
+            
+            socket.onopen = () => {
+                socket.send(JSON.stringify({ type: 'command', command: 'GET_LOGS', macAddress: currentMac }));
+            };
+
+            socket.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                if(data.type === 'statusUpdate' && data.payload.macAddress === currentMac) {
+                    updateStatus(data.payload);
+                } else if(data.type === 'logListUpdate') {
+                    logs = data.payload;
+                    renderLogs();
+                }
+            };
+
+            socket.onerror = () => {
+                console.warn("WebSocket Failed. Switching to Simulation Mode.");
+                simulateWS();
+            };
+        }
+
+        // --- SIMULATION MODE (For Offline/Demo) ---
+        function simulateWS() {
+            updateStatus({ motorStatus: 'OFF', mode: 'Normal', online: true }); // Initial State
+            
+            // Mock Logs
+            logs = [
+                { bdDate: '16/01/2026', bdTime: '10:00 AM', duration: '15m 20s' },
+                { bdDate: '15/01/2026', bdTime: '02:30 PM', duration: '45m 10s' }
+            ];
+            renderLogs();
+
+            const badge = document.getElementById('connection-badge');
+            badge.textContent = 'DEMO MODE';
+            badge.className = "px-3 py-1 rounded text-xs font-bold text-black bg-yellow-400";
+        }
+
+        function updateStatus(p) {
+            const ind = document.getElementById('motor-indicator');
+            const txt = document.getElementById('motor-status-text');
+            const bdg = document.getElementById('connection-badge');
+            
+            if (!mockMode) {
+                bdg.textContent = 'ONLINE'; 
+                bdg.className = "px-3 py-1 rounded text-xs font-bold text-white bg-green-500";
+            }
+            
+            if(p.motorStatus === 'ON') {
+                ind.className = "w-32 h-32 rounded-full border-4 border-green-500 text-green-500 flex flex-col items-center justify-center animate-pulse transition-all";
+                txt.textContent = 'ON';
+            } else {
+                ind.className = "w-32 h-32 rounded-full border-4 border-slate-200 text-slate-300 flex flex-col items-center justify-center transition-all";
+                txt.textContent = 'OFF';
+            }
+        }
+
+        function renderLogs() {
+            const tbody = document.getElementById('logs-body');
+            tbody.innerHTML = logs.map(l => `
+                <tr class="border-b hover:bg-slate-50 transition">
+                    <td class="px-4 py-3 font-mono text-slate-600">${l.bdDate || '-'}</td>
+                    <td class="px-4 py-3 font-mono text-slate-600">${l.bdTime || '-'}</td>
+                    <td class="px-4 py-3 font-bold text-indigo-600">${l.duration || '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function handleAddDevice(e) {
+            e.preventDefault();
+            const mac = e.target.mac.value;
+            const serial = e.target.serial.value;
+            
+            const data = await apiCall('/device/add', 'POST', { macAddress: mac, serialNumber: serial });
+            alert(data.msg);
+            
+            if(data.msg.includes('Added')) {
+                user.devices.push(mac);
+                initDashboard();
+                closeModal('add-device');
+            }
+        }
+
+        function sendCommand(cmd) {
+            if (mockMode) {
+                // Toggle UI state for demo feel
+                const newStatus = cmd === 'RELAY_1' ? 'ON' : 'OFF';
+                updateStatus({ motorStatus: newStatus });
+                alert(`Command ${cmd} simulated in Demo Mode`);
+                return;
+            }
+
+            if(socket && socket.readyState === 1) {
+                socket.send(JSON.stringify({ type: 'command', command: cmd, targetMac: currentMac }));
+            } else alert("Device Offline");
+        }
+
+        function downloadCSV() {
+            let csv = "Date,Time,Duration\n" + logs.map(l => `${l.bdDate},${l.bdTime},${l.duration}`).join("\n");
+            const a = document.createElement('a');
+            a.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
+            a.download = 'logs.csv';
+            a.click();
+        }
+
+        async function loadAdminData() {
+            const users = await apiCall('/admin/users');
+            document.getElementById('admin-content').innerHTML = `
+                <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-50 uppercase text-xs"><tr><th class="px-4 py-3 text-left">Name</th><th class="px-4 py-3 text-left">Email</th><th class="px-4 py-3 text-right">Action</th></tr></thead>
+                    <tbody class="divide-y">${users.map(u => `
+                        <tr class="hover:bg-slate-50"><td class="px-4 py-3 font-medium">${u.name}</td><td class="px-4 py-3 text-slate-500">${u.email}</td><td class="px-4 py-3 text-right">
+                            <button onclick="toggleBlock('${u._id}', ${!u.isBlocked})" class="px-2 py-1 rounded text-xs font-bold transition ${u.isBlocked?'bg-red-100 text-red-600 hover:bg-red-200':'bg-green-100 text-green-600 hover:bg-green-200'}">${u.isBlocked?'UNBLOCK':'BLOCK'}</button>
+                        </td></tr>
+                    `).join('')}</tbody>
+                </table>
+                </div>
+            `;
+        }
+
+        async function toggleBlock(id, status) {
+            await apiCall('/admin/toggle-block', 'POST', { userId: id, blockStatus: status });
+            loadAdminData();
+        }
+
+        function openModal(id) { document.getElementById(`modal-${id}`).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(`modal-${id}`).classList.add('hidden'); }
+        function handleLogout() { 
+            token=null; user=null; mockMode=false; 
+            if(socket) socket.close();
+            switchView('login'); 
+        }
+
+        switchView('login');
+    </script>
+</body>
+</html>
