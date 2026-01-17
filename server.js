@@ -122,13 +122,19 @@ wss.on('connection', (ws) => {
             });
         }
         else if (data.type === 'command') {
-            console.log(`Command received: ${data.command}`);
-            if (esp32Socket && esp32Socket.readyState === WebSocket.OPEN) {
-                esp32Socket.send(JSON.stringify(data));
-                console.log("Command forwarded to ESP32.");
+            console.log(`[CMD] Received: ${data.command} Value: ${data.value}`);
+            if (esp32Socket) {
+                if (esp32Socket.readyState === WebSocket.OPEN) {
+                    esp32Socket.send(JSON.stringify(data));
+                    console.log(`[CMD] Forwarded to ESP32 (State: OPEN)`);
+                } else {
+                    console.warn(`[CMD] Failed: ESP32 Socket exists but State is ${esp32Socket.readyState}`);
+                    ws.send(JSON.stringify({ type: 'error', message: 'Device Disconnected (Socket Closed).' }));
+                    esp32Socket = null; // Clear stale ref
+                }
             } else {
-                console.warn("Command failed: ESP32 not connected.");
-                ws.send(JSON.stringify({ type: 'error', message: 'Device Offline. Command failed.' }));
+                console.warn("[CMD] Failed: ESP32 Socket is NULL.");
+                ws.send(JSON.stringify({ type: 'error', message: 'Device Offline (No Socket).' }));
             }
         }
     });
