@@ -76,18 +76,41 @@ wss.on('connection', (ws) => {
         }
         // --- LOG QUERY FROM DASHBOARD ---
         else if (data.type === 'getLogs') {
+            const { startDate, endDate } = data.payload || {};
+            let query = {};
+
+            if (startDate || endDate) {
+                query.serverTime = {};
+                if (startDate) query.serverTime.$gte = new Date(startDate);
+                if (endDate) {
+                    const end = new Date(endDate);
+                    end.setHours(23, 59, 59, 999); // Include the whole end day
+                    query.serverTime.$lte = end;
+                }
+            }
+
             if (mongoose.connection.readyState === 1) {
                 try {
-                    // Start/End are text dates YYYY-MM-DD passed from UI?
-                    // Or we just return last 100 for now if no filter?
-                    // Simple impl: return last 50
-                    const logs = await MotorLog.find().sort({ serverTime: -1 }).limit(50);
+                    const logs = await MotorLog.find(query).sort({ serverTime: -1 }).limit(100);
                     ws.send(JSON.stringify({ type: 'logHistory', payload: logs }));
                 } catch (err) {
                     console.error("DB Query Fail:", err);
                 }
             } else {
                 ws.send(JSON.stringify({ type: 'logHistory', payload: [] }));
+            }
+        }
+        // --- CLEAR LOGS ---
+        else if (data.type === 'clearLogs') {
+            if (mongoose.connection.readyState === 1) {
+                try {
+                    await MotorLog.deleteMany({});
+                    console.log("All logs cleared from DB.");
+                    // Notify dashboard to clear table
+                    ws.send(JSON.stringify({ type: 'logHistory', payload: [] }));
+                } catch (err) {
+                    console.error("DB Clear Fail:", err);
+                }
             }
         }
         // --- EXISTING STATUS/COMMAND LOGIC ---
