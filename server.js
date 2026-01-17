@@ -70,6 +70,8 @@ wss.on('connection', (ws) => {
                 } catch (err) {
                     console.error("DB Save Fail:", err);
                 }
+            } else {
+                console.error("Log Dropped: MongoDB NOT Connected (State: " + mongoose.connection.readyState + ")");
             }
         }
         // --- LOG QUERY FROM DASHBOARD ---
@@ -79,11 +81,15 @@ wss.on('connection', (ws) => {
 
             if (startDate || endDate) {
                 query.serverTime = {};
-                if (startDate) query.serverTime.$gte = new Date(startDate);
+                if (startDate) {
+                    // Force start of day UTC
+                    query.serverTime.$gte = new Date(startDate);
+                }
                 if (endDate) {
+                    // Force End of Day by going to Next Day 00:00
                     const end = new Date(endDate);
-                    end.setHours(23, 59, 59, 999);
-                    query.serverTime.$lte = end;
+                    end.setDate(end.getDate() + 1);
+                    query.serverTime.$lt = end;
                 }
             }
 
