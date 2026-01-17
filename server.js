@@ -122,8 +122,13 @@ wss.on('connection', (ws) => {
             });
         }
         else if (data.type === 'command') {
+            console.log(`Command received: ${data.command}`);
             if (esp32Socket && esp32Socket.readyState === WebSocket.OPEN) {
                 esp32Socket.send(JSON.stringify(data));
+                console.log("Command forwarded to ESP32.");
+            } else {
+                console.warn("Command failed: ESP32 not connected.");
+                ws.send(JSON.stringify({ type: 'error', message: 'Device Offline. Command failed.' }));
             }
         }
     });
