@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PumpIO Controller</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.10.2/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        /* Classic gear spin animation */
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Apply animation when the parent has 'motor-on' class */
+        #motor-animation-icon.motor-on #motor-gear {
+            animation: spin 1s linear infinite;
+            transform-origin: center;
+            transform-box: fill-box;
+        }
+    </style>
+</head>
+
+<body class="bg-base-100">
+
+    <div class="drawer drawer-end">
+        <input id="settings-drawer" type="checkbox" class="drawer-toggle" />
+        <div class="drawer-content flex flex-col justify-between min-h-screen">
+
+            <!-- Navbar -->
+            <div class="navbar bg-base-200 shadow-lg">
+                <div class="flex-1">
+                    <h1 class="text-xl sm:text-2xl font-bold px-4">PumpIO</h1>
+                </div>
+                <div class="flex-none gap-2 items-center">
+                    <div id="connectionStatus" class="badge badge-md sm:badge-lg badge-warning">Connecting...</div>
+
+                    <div id="ipTooltip" class="tooltip tooltip-bottom" data-tip="IP: --">
+                        <svg id="wifi-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 cursor-pointer"
+                            fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round">
+                            <circle id="wifi-dot" cx="12" cy="18" r="1.5"
+                                class="text-gray-400 transition-colors duration-300" fill="currentColor"
+                                stroke="none" />
+                            <path id="wifi-arc-1" d="M8.5,14.5 a5,5 0 0 1 7,0"
+                                class="text-gray-400 transition-colors duration-300" stroke="currentColor" />
+                            <path id="wifi-arc-2" d="M5,11 a9,9 0 0 1 14,0"
+                                class="text-gray-400 transition-colors duration-300" stroke="currentColor" />
+                            <path id="wifi-arc-3" d="M1.5,7.5 a13,13 0 0 1 21,0"
+                                class="text-gray-400 transition-colors duration-300" stroke="currentColor" />
+                        </svg>
+                    </div>
+
+                    <label for="settings-drawer" class="btn btn-square btn-ghost drawer-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                            class="inline-block w-6 h-6 stroke-current">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                            </path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Page content -->
+            <div>
+                <div class="p-4 sm:p-6 md:p-8">
+                    <div class="max-w-4xl mx-auto">
+
+                        <!-- Motor Control Center -->
+                        <div class="card bg-base-300 shadow-xl mb-8">
+                            <div class="card-body items-center text-center">
+                                <h2 class="card-title text-2xl">Motor Control Center</h2>
+                                <div class="flex items-center gap-4 my-4">
+                                    <svg id="motor-animation-icon" xmlns="http://www.w3.org/2000/svg"
+                                        class="h-24 w-24 text-error transition-colors duration-500" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <g id="motor-gear">
+                                            <path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z" />
+                                            <path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />
+                                            <path d="M12 2v2" />
+                                            <path d="M12 20v2" />
+                                            <path d="m4.93 4.93 1.41 1.41" />
+                                            <path d="m17.66 17.66 1.41 1.41" />
+                                            <path d="M2 12h2" />
+                                            <path d="M20 12h2" />
+                                            <path d="m4.93 19.07 1.41-1.41" />
+                                            <path d="m17.66 6.34 1.41-1.41" />
+                                        </g>
+                                    </svg>
+                                    <div>
+                                        <p class="text-lg">Current Status</p>
+                                        <p id="motorStatus" class="text-4xl font-bold text-info">--</p>
+                                    </div>
+                                </div>
+                                <div class="card-actions justify-center w-full">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-md">
+                                        <button
+                                            onclick="showActionConfirmation('RELAY_1', 'Are you sure you want to start the motor?')"
+                                            class="btn btn-success btn-md text-lg control-btn" disabled>
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            Start Motor
+                                        </button>
+                                        <button
+                                            onclick="showActionConfirmation('RELAY_2', 'Are you sure you want to stop the motor?')"
+                                            class="btn btn-error btn-md text-lg control-btn" disabled>
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M9 10h6v4H9z" />
+                                            </svg>
+                                            Stop Motor
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+                            <div class="card bg-base-200 shadow-xl">
+                                <div class="card-body p-4 sm:p-6">
+                                    <h2 class="card-title">System Mode</h2>
+                                    <p id="systemMode" class="text-xl font-bold text-success">--</p>
+                                </div>
+                            </div>
+                            <div class="card bg-base-200 shadow-xl">
+                                <div class="card-body p-4 sm:p-6">
+                                    <h2 class="card-title">Last Action</h2>
+                                    <p id="lastAction" class="text-lg font-bold truncate">--</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Logs Section -->
+                        <div class="card bg-base-200 shadow-xl">
+                            <div class="card-body p-4 sm:p-6">
+                                <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-2">
+                                    <h2 class="card-title text-xl sm:text-2xl">Activity Log <span
+                                            id="totalDurationBadge"
+                                            class="badge badge-neutral ml-2 text-sm font-normal">Total: 0s</span></h2>
+                                    <div
+                                        class="flex gap-2 items-center flex-wrap justify-center sm:justify-end w-full sm:w-auto">
+                                        <input type="date" id="dateFrom" class="input input-sm input-bordered" />
+                                        <span class="text-sm">to</span>
+                                        <input type="date" id="dateTo" class="input input-sm input-bordered" />
+                                        <button onclick="handleLoadDataClick()"
+                                            class="btn btn-sm btn-primary">Filter</button>
+
+                                        <!-- PDF Button -->
+                                        <button onclick="downloadLogsPDF()" class="btn btn-sm btn-success text-white"
+                                            title="Download PDF">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                            </svg>
+                                            <span class="hidden sm:inline">PDF</span>
+                                        </button>
+
+                                        <!-- Delete Range Button -->
+                                        <button onclick="handleDeleteRangeClick()"
+                                            class="btn btn-sm btn-error text-white" title="Delete Logs in Range">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+
+                                        <div class="dropdown dropdown-end">
+                                            <div tabindex="0" role="button"
+                                                class="btn btn-sm btn-ghost btn-circle text-error">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                                    viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </div>
+                                            <ul tabindex="0"
+                                                class="menu menu-sm dropdown-content mt-3 z-[5] p-2 shadow bg-base-100 rounded-box w-52">
+                                                <li><a onclick="showActionConfirmation('clearLogs', 'Delete ALL logs from Server?')"
+                                                        class="text-error font-bold">Clear All History</a></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="overflow-x-auto h-96">
+                                    <table class="table table-xs sm:table-sm table-pin-rows">
+                                        <thead>
+                                            <tr>
+                                                <th>ON Time</th>
+                                                <th>OFF Time</th>
+                                                <th>Duration</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="logTableBody">
+                                            <tr>
+                                                <td colspan="3" class="text-center">Click "Filter" to view logs.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="footer footer-center p-4 bg-base-300 text-base-content">
+                <aside>
+                    <p>Copyright © 2025 - All right reserved | Developed by <a
+                            href="https://sarwar-jahan-shohid.web.app/" target="_blank" rel="noopener noreferrer"
+                            class="font-bold hover:underline">shohidmax</a></p>
+                </aside>
+            </footer>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="drawer-side">
+            <label for="settings-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
+            <ul class="menu p-4 w-72 sm:w-80 min-h-full bg-base-200 text-base-content">
+                <li class="menu-title"><span>Settings</span></li>
+                <li><label class="label cursor-pointer"><span class="label-text text-lg">Theme</span><label
+                            class="swap swap-rotate"><input type="checkbox" id="theme-toggle" /><svg
+                                class="swap-on fill-current w-7 h-7" xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24">
+                                <path
+                                    d="M5.64,17l-.71.71a1,1,0,0,0,0,1.41,1,1,0,0,0,1.41,0l.71-.71A1,1,0,0,0,5.64,17ZM5,12a1,1,0,0,0-1-1H3a1,1,0,0,0,0,2H4A1,1,0,0,0,5,12Zm7-7a1,1,0,0,0,1-1V3a1,1,0,0,0-2,0V4A1,1,0,0,0,12,5ZM5.64,7.05a1,1,0,0,0,.7.29,1,1,0,0,0,.71-.29,1,1,0,0,0,0-1.41l-.71-.71A1,1,0,0,0,4.93,6.34Zm12,.29a1,1,0,0,0,.7.29l.71-.71a1,1,0,1,0-1.41-1.41L17,5.64a1,1,0,0,0,0,1.41A1,1,0,0,0,17.66,7.34ZM21,11H20a1,1,0,0,0,0,2h1a1,1,0,0,0,0-2Zm-9,8a1,1,0,0,0-1,1v1a1,1,0,0,0,2,0V20A1,1,0,0,0,12,19ZM18.36,17A1,1,0,0,0,17,18.36l.71.71a1,1,0,0,0,1.41,0,1,1,0,0,0,0-1.41ZM12,6.5A5.5,5.5,0,1,0,17.5,12,5.51,5.51,0,0,0,12,6.5Zm0,9A3.5,3.5,0,1,1,15.5,12,3.5,3.5,0,0,1,12,15.5Z" />
+                            </svg><svg class="swap-off fill-current w-7 h-7" xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24">
+                                <path
+                                    d="M21.64,13a1,1,0,0,0-1.05-.14,8.05,8.05,0,0,1-3.37.73A8.15,8.15,0,0,1,9.08,5.49a8.59,8.59,0,0,1,.25-2A1,1,0,0,0,8,2.36,10.14,10.14,0,1,0,22,14.05,1,1,0,0,0,21.64,13Zm-9.5,6.69A8.14,8.14,0,0,1,7.08,5.22,8.27,8.27,0,0,1,15.92,4.4,10,10,0,1,1,12.14,19.73Z" />
+                            </svg></label></label></li>
+                <div class="divider"></div>
+                <!-- Connectivity Removed (Handled by Dynamic Portal) -->
+                <li class="menu-title"><span>Device Actions</span></li>
+                <li><button
+                        onclick="showActionConfirmation('RESTART_ESP', 'Are you sure you want to restart the device?')"
+                        class="btn btn-error control-btn" disabled>Restart Device</button></li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <dialog id="action_modal" class="modal">
+        <div class="modal-box">
+            <h3 class="font-bold text-lg">Confirm Action</h3>
+            <p id="action_modal_text" class="py-4">Are you sure?</p>
+            <div class="modal-action">
+                <form method="dialog" class="flex gap-2"><button class="btn">No</button><button type="button"
+                        id="confirmActionButton" class="btn btn-primary">Yes</button></form>
+            </div>
+        </div>
+    </dialog>
+
+    <div id="toast-container" class="toast toast-bottom toast-center z-50"></div>
+
+    <script>
+        // --- GLOBAL STATE ---
+        let ws;
+        let pendingAction = null;
+        let previousLastAction = '';
+        let currentLogs = [];
+
+        // --- THEME ---
+        const themeToggle = document.getElementById('theme-toggle');
+        const currentTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', currentTheme);
+        if (currentTheme === 'dark') { themeToggle.checked = true; }
+        themeToggle.addEventListener('change', function () {
+            const theme = this.checked ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+        });
+
+        // --- UI HELPERS ---
+        function showToast(message, type = 'info') {
+            const toastContainer = document.getElementById('toast-container');
+            const alertClass = { success: 'alert-success', info: 'alert-info', error: 'alert-error' }[type];
+            const toastElement = document.createElement('div');
+            toastElement.className = `alert ${alertClass} shadow-lg`;
+            toastElement.innerHTML = `<span>${message}</span>`;
+            toastContainer.appendChild(toastElement);
+            setTimeout(() => { toastElement.remove(); }, 3000);
+        }
+
+        function updateStatus(elementId, text, className) {
+            const el = document.getElementById(elementId);
+            if (el) {
+                el.textContent = text;
+                el.className = `badge badge-md sm:badge-lg ${className}`;
+            }
+        }
+
+        function updateWifiIcon(strength) {
+            const dot = document.getElementById('wifi-dot'), arc1 = document.getElementById('wifi-arc-1'),
+                arc2 = document.getElementById('wifi-arc-2'), arc3 = document.getElementById('wifi-arc-3');
+            const active = 'text-success', inactive = 'text-gray-400';
+            [dot, arc1, arc2, arc3].forEach(el => { if (el) el.classList.replace(active, inactive) || el.classList.add(inactive); });
+            if (strength > 0) dot.classList.replace(inactive, active);
+            if (strength > 25) arc1.classList.replace(inactive, active);
+            if (strength > 50) arc2.classList.replace(inactive, active);
+            if (strength > 75) arc3.classList.replace(inactive, active);
+        }
+
+        // --- WEBSOCKET CONNECTION ---
+        function connect() {
+            // ** IMPORTANT: REPLACE WITH YOUR SERVER URL **
+            const wsUrl = 'wss://pumpv5.espserver.site';
+            console.log("Connecting to:", wsUrl);
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                console.log("WS Connected");
+                updateStatus('connectionStatus', 'Connected', 'badge-success');
+                // Enable filter button on connect
+                const btn = document.querySelector('button[onclick="handleLoadDataClick()"]');
+                if (btn) btn.disabled = false;
+                // Enable control buttons immediately
+                document.querySelectorAll('.control-btn').forEach(el => el.disabled = false);
+
+                // IMMEDIATE SYNC REQUEST
+                ws.send(JSON.stringify({ type: 'requestStatus' }));
+
+                // Auto-Select "Today" if empty to show logs immediately
+                const sParam = document.getElementById('dateFrom');
+                const eParam = document.getElementById('dateTo');
+                if (!sParam.value || !eParam.value) {
+                    const today = new Date().toISOString().split('T')[0];
+                    sParam.value = today;
+                    eParam.value = today;
+                    // Auto Fetch
+                    setTimeout(handleLoadDataClick, 500);
+                }
+            };
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data.trim());
+                    // console.log("Received:", data);
+
+                    if (data.type === 'statusUpdate') {
+                        // ESP32 Status
+                        updateStatus('espStatus', 'Online', 'badge-success');
+                        document.querySelectorAll('.control-btn').forEach(el => el.disabled = false);
+                        updateDashboard(data.payload);
+                    }
+                    else if (data.type === 'logHistory') {
+                        // Server Logs
+                        updateLogTable(data.payload);
+                    }
+                    else if (data.type === 'error') {
+                        showToast(data.message, 'error');
+                        // Reset Filter Button
+                        const btn = document.querySelector('button[onclick="handleLoadDataClick()"]');
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.innerHTML = 'Filter';
+                        }
+                    }
+                } catch (e) { console.error("Failed to parse JSON:", e); }
+            };
+            ws.onclose = () => {
+                console.log("WS Disconnected");
+                updateStatus('connectionStatus', 'Disconnected', 'badge-error');
+                document.querySelectorAll('.control-btn').forEach(el => el.disabled = true);
+                setTimeout(connect, 3000);
+            };
+            ws.onerror = (error) => { ws.close(); };
+        }
+
+        function sendCommand(command, value = null) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                if (command === 'getLogs') {
+                    ws.send(JSON.stringify({ type: 'getLogs', payload: value }));
+                } else if (command === 'clearLogs') {
+                    ws.send(JSON.stringify({ type: 'clearLogs' }));
+                } else {
+                    ws.send(JSON.stringify({ type: 'command', command, value }));
+                }
+            } else {
+                showToast('Not connected to server', 'error');
+            }
+        }
+
+        // --- DASHBOARD UPDATE LOGIC ---
+        function updateDashboard(data) {
+            document.getElementById('motorStatus').textContent = data.motorStatus || '--';
+            document.getElementById('systemMode').textContent = data.systemMode || '--';
+            document.getElementById('ipTooltip').setAttribute('data-tip', `IP: ${data.localIP || 'N/A'}`);
+            document.getElementById('lastAction').textContent = data.lastAction || '--';
+
+            updateWifiIcon(data.wifiSignal || 0);
+
+            const motorStatusEl = document.getElementById('motorStatus');
+            const motorAnimationIcon = document.getElementById('motor-animation-icon');
+
+            if (data.motorStatus === 'ON') {
+                motorStatusEl.className = 'text-4xl font-bold text-success';
+                if (motorAnimationIcon) {
+                    motorAnimationIcon.classList.remove('text-error');
+                    motorAnimationIcon.classList.add('text-success', 'motor-on');
+                }
+            } else {
+                motorStatusEl.className = 'text-4xl font-bold text-info';
+                if (motorAnimationIcon) {
+                    motorAnimationIcon.classList.remove('motor-on', 'text-success');
+                    motorAnimationIcon.classList.add('text-error');
+                }
+            }
+
+            // Toasts for Actions
+            const newAction = data.lastAction;
+            if (newAction && newAction !== previousLastAction && newAction !== "System Boot") {
+                let msg = '';
+                if (newAction.includes("Motor ON")) msg = "Motor ON Successful!";
+                if (newAction.includes("Motor OFF")) msg = "Motor OFF Successful!";
+                if (newAction.includes("Reset")) msg = "System Reset Successful!";
+                if (msg) showToast(msg, 'success');
+            }
+            previousLastAction = newAction;
+        }
+
+        // --- LOG LOGIC ---
+        function handleLoadDataClick() {
+            const s = document.getElementById('dateFrom').value;
+            const e = document.getElementById('dateTo').value;
+
+            if (!s || !e) {
+                showToast('Please select both Start and End dates.', 'warning');
+                return;
+            }
+
+            const btn = document.querySelector('button[onclick="handleLoadDataClick()"]');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = `<span class="loading loading-spinner"></span>`;
+            }
+
+            // clear previous
+            currentLogs = [];
+            // renderLogs(); // Removed
+
+            sendCommand('getLogs', { startDate: s, endDate: e });
+            showToast('Fetching logs...', 'info');
+        }
+
+        function parseDurationToSeconds(durStr) {
+            let total = 0;
+            if (!durStr) return 0;
+
+            // Check for simple seconds "12s" or just "12"
+            if (/^\d+s?$/.test(durStr)) {
+                return parseInt(durStr);
+            }
+
+            const h = durStr.match(/(\d+)h/);
+            const m = durStr.match(/(\d+)m/);
+            const s = durStr.match(/(\d+)s/);
+            if (h) total += parseInt(h[1]) * 3600;
+            if (m) total += parseInt(m[1]) * 60;
+            if (s) total += parseInt(s[1]);
+            return total;
+        }
+
+        function formatTotalDuration(seconds) {
+            if (seconds === 0) return "0s";
+            const h = Math.floor(seconds / 3600);
+            seconds %= 3600;
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+
+            let parts = [];
+            if (h > 0) parts.push(`${h}h`);
+            if (m > 0) parts.push(`${m}m`);
+            if (s > 0 || parts.length === 0) parts.push(`${s}s`);
+            return parts.join(' ');
+        }
+
+        function updateLogTable(logs) {
+            const logTableBody = document.getElementById('logTableBody');
+            logTableBody.innerHTML = '';
+            currentLogs = [];
+            let totalSeconds = 0;
+
+            const loadDataBtn = document.querySelector('button[onclick="handleLoadDataClick()"]');
+            if (loadDataBtn) {
+                loadDataBtn.disabled = false;
+                loadDataBtn.innerHTML = 'Filter';
+            }
+
+            if (logs && Array.isArray(logs) && logs.length > 0) {
+                logs.forEach(log => {
+                    currentLogs.push(log);
+                    totalSeconds += parseDurationToSeconds(log.duration);
+
+                    const row = document.createElement('tr');
+                    // Ensure dates look nice
+                    row.innerHTML = `<td>${log.onTime}</td><td>${log.offTime}</td><td>${log.duration}</td>`;
+                    logTableBody.appendChild(row);
+                });
+            } else {
+                logTableBody.innerHTML = '<tr><td colspan="3" class="text-center">No logs found.</td></tr>';
+            }
+
+            // Update Total Duration Badge
+            const totalBadge = document.getElementById('totalDurationBadge');
+            if (totalBadge) {
+                totalBadge.textContent = 'Total: ' + formatTotalDuration(totalSeconds);
+            }
+        }
+
+        function downloadLogsPDF() {
+            if (currentLogs.length === 0) {
+                showToast('No logs available.', 'info');
+                return;
+            }
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFontSize(18);
+            doc.text('Activity Log', 14, 22);
+            doc.setFontSize(10);
+            doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 28);
+
+            const tableData = currentLogs.map(log => [log.onTime, log.offTime, log.duration]);
+            doc.autoTable({
+                head: [['ON Time', 'OFF Time', 'Duration']],
+                body: tableData,
+                startY: 32,
+            });
+            const dateStr = new Date().toISOString().slice(0, 10);
+            doc.save(`log_${dateStr}.pdf`);
+        }
+
+        // --- CONFIRMATION MODAL ---
+        function showActionConfirmation(command, text, value = null) {
+            pendingAction = { command, value: value };
+            document.getElementById('action_modal_text').textContent = text;
+            action_modal.showModal();
+        }
+
+        function handleDeleteRangeClick() {
+            const s = document.getElementById('dateFrom').value;
+            const e = document.getElementById('dateTo').value;
+            if (!s || !e) {
+                showToast('Select Start & End dates to delete.', 'warning');
+                return;
+            }
+            showActionConfirmation('deleteLogs', `Delete logs from ${s} to ${e}?`, { startDate: s, endDate: e });
+        }
+
+        document.getElementById('confirmActionButton').addEventListener('click', () => {
+            if (pendingAction) {
+                sendCommand(pendingAction.command, pendingAction.value);
+                let actionText = pendingAction.command.replace(/_/g, ' ').toLowerCase();
+                showToast(`Requesting...`, 'info');
+                pendingAction = null;
+                action_modal.close();
+            }
+        });
+
+        // Initialize
+        connect();
+    </script>
+</body>
+
+</html>
