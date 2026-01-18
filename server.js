@@ -77,8 +77,15 @@ wss.on('connection', (ws) => {
         // --- LOG QUERY FROM DASHBOARD ---
         else if (data.type === 'getLogs') {
             const { startDate, endDate } = data.payload || {};
-            let query = {};
 
+            // STRICT FILTER ENFORCEMENT
+            if (!startDate || !endDate) {
+                console.warn("Log Fetch Denied: Missing Date Range");
+                ws.send(JSON.stringify({ type: 'error', message: 'Date Range Required' }));
+                return;
+            }
+
+            let query = {};
             if (startDate || endDate) {
                 query.serverTime = {};
                 if (startDate) {
