@@ -151,6 +151,16 @@ wss.on('connection', (ws) => {
         else if (data.type === 'ping') {
             ws.send(JSON.stringify({ type: 'pong' }));
         }
+        else if (data.type === 'requestStatus') {
+            if (esp32Socket && esp32Socket.readyState === WebSocket.OPEN) {
+                // 1. Tell Dashboard "Server knows Device is Online"
+                ws.send(JSON.stringify({ type: 'serverStatus', deviceOnline: true }));
+                // 2. Ask ESP32 for fresh data
+                esp32Socket.send(JSON.stringify({ command: "FORCE_STATUS_UPDATE", value: 1 }));
+            } else {
+                ws.send(JSON.stringify({ type: 'serverStatus', deviceOnline: false }));
+            }
+        }
     });
 
     ws.on('close', () => {
