@@ -112,16 +112,40 @@ wss.on('connection', (ws) => {
                 ws.send(JSON.stringify({ type: 'logHistory', payload: [] }));
             }
         }
-        // --- CLEAR LOGS ---
-        else if (data.type === 'clearLogs') {
+        // --- CLEAR/DELETE LOGS ---
+        else if (data.type === 'deleteLogs' || data.type === 'clearLogs') {
+            const { startDate, endDate } = data.payload || {};
+            let match = {};
+
+            if (startDate && endDate) {
+                match.serverTime = {
+                    $gte: new Date(startDate),
+                    $lt: new Date(new Date(endDate).setDate(new Date(endDate).getDate() + 1))
+                };
+            }
+
             if (mongoose.connection.readyState === 1) {
                 try {
-                    await MotorLog.deleteMany({});
-                    console.log("All logs cleared from DB.");
-                    // Notify dashboard to clear table
-                    ws.send(JSON.stringify({ type: 'logHistory', payload: [] }));
+                    const result = await MotorLog.deleteMany(match);
+                    console.log(`Deleted ${result.deletedCount} logs.`);
+
+                    // Notify dashboard to clear table if it was a full clear, 
+                    // or just refresh if it was a partial clear.
+                    // Easiest is to send an empty list or trigger a refresh? 
+                    // Actually, sending 'logHistory' with [] is aggressive if only partial.
+                    // Better to send a success message and let client refresh.
+                    ws.send(JSON.stringify({ type: 'error', message: `Deleted ${result.deletedCount} logs.` })); // Reuse toast
+
+                    // If full clear, clear table
+                    if (Object.keys(match).length === 0) {
+                        ws.send(JSON.stringify({ type: 'logHistory', payload: [] }));
+                    } else {
+                        // If partial, maybe ask client to refresh? 
+                        // For now client will manually refresh or we can trigger it.
+                    }
                 } catch (err) {
                     console.error("DB Clear Fail:", err);
+                    ws.send(JSON.stringify({ type: 'error', message: 'Delete Failed.' }));
                 }
             }
         }
