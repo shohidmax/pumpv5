@@ -106,6 +106,7 @@ wss.on('connection', (ws) => {
                     ws.send(JSON.stringify({ type: 'logHistory', payload: logs }));
                 } catch (err) {
                     console.error("DB Query Fail:", err);
+                    ws.send(JSON.stringify({ type: 'error', message: 'Database Error. Check Server Logs.' }));
                 }
             } else {
                 ws.send(JSON.stringify({ type: 'logHistory', payload: [] }));
